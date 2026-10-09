@@ -4,6 +4,11 @@
 
 [Start the prototype](https://www.figma.com/proto/UIde8BGhSWliAsRp5C4mbA?node-id=3-49&starting-point-node-id=3%3A49)
 
+For the current SwiftUI layout, accessibility behavior, and integration steps,
+see [SwiftUI refinement](SwiftUI-Refinement.md). The design dimensions and colors
+below describe the original Figma pass; SwiftUI now includes a hub screen,
+larger card typography, adaptive light mode, and native glass controls.
+
 Completed in Figma:
 
 - Dark theme with scoped color, spacing, and radius variables; SF Pro text styles.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Matches the NP / Black Dynamic variables in Figma.
+// Original Black Dynamic palette plus accessible light-mode urgency colors.
 enum BlackDynamic {
     static let background_app = Color(.sRGB, red: 9 / 255, green: 9 / 255, blue: 13 / 255)
     static let background_card = Color(.sRGB, red: 21 / 255, green: 21 / 255, blue: 28 / 255)
@@ -15,6 +15,9 @@ enum BlackDynamic {
     static let status_urgent = Color(.sRGB, red: 255 / 255, green: 138 / 255, blue: 138 / 255)
     static let status_warning = Color(.sRGB, red: 242 / 255, green: 190 / 255, blue: 117 / 255)
     static let status_positive = Color(.sRGB, red: 154 / 255, green: 218 / 255, blue: 187 / 255)
+    static let background_light = Color(.sRGB, red: 246 / 255, green: 245 / 255, blue: 250 / 255)
+    static let urgent_light = Color(.sRGB, red: 176 / 255, green: 36 / 255, blue: 48 / 255)
+    static let warning_light = Color(.sRGB, red: 135 / 255, green: 77 / 255, blue: 12 / 255)
     static let cardRadius: CGFloat = 20
     static let controlRadius: CGFloat = 14
     static let pillRadius: CGFloat = 99
@@ -23,98 +26,127 @@ enum BlackDynamic {
 // PriorityCard, EventCard, and SummaryCard share this layout.
 // Detail must communicate urgency in words as well as color.
 struct HubCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+
     let symbol: String
     let source: String
     let title: String
     let summary: String
     let detail: String
-    var accent: Color = BlackDynamic.text_primary
+    var accent: Color = .primary
     var dueAt: Date? = nil
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 60)) { context in
-            card(tint: FeedUrgency.classify(dueAt: dueAt, now: context.date).tint(regular: accent))
+            card(tint: FeedUrgency.classify(dueAt: dueAt, now: context.date).tint(regular: accent, scheme: colorScheme))
         }
     }
 
     private func card(tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
                 Image(systemName: symbol)
+                    .font(.body)
+                    .padding(10)
+                    .background(tint.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityHidden(true)
                 Text(source)
-                    .font(.caption2.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 10)
             }
             .foregroundStyle(tint)
 
             Text(title)
-                .font(.headline)
+                .font(.title3.bold())
                 .foregroundStyle(tint)
             Text(summary)
-                .font(.subheadline)
-                .foregroundStyle(BlackDynamic.text_secondary)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
             Text(detail)
                 .font(.footnote.weight(.medium))
                 .foregroundStyle(tint)
         }
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(BlackDynamic.background_card)
+        .padding(20)
+        .background(colorScheme == .dark ? BlackDynamic.background_card : .white)
         .clipShape(RoundedRectangle(cornerRadius: BlackDynamic.cardRadius))
         .overlay {
             RoundedRectangle(cornerRadius: BlackDynamic.cardRadius)
-                .strokeBorder(tint.opacity(0.35), lineWidth: 1)
+                .strokeBorder(tint.opacity(contrast == .increased ? 0.65 : 0.2), lineWidth: 1)
         }
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.12 : 0.04), radius: 12, y: 5)
         .accessibilityElement(children: .combine)
     }
 }
 
 private extension FeedUrgency {
-    func tint(regular: Color) -> Color {
+    func tint(regular: Color, scheme: ColorScheme) -> Color {
         switch self {
-        case .soon: return BlackDynamic.status_urgent
-        case .upcoming: return BlackDynamic.status_warning
+        case .soon: return scheme == .dark ? BlackDynamic.status_urgent : BlackDynamic.urgent_light
+        case .upcoming: return scheme == .dark ? BlackDynamic.status_warning : BlackDynamic.warning_light
         case .regular: return regular
         }
     }
 }
 
 struct DailyOverviewCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.colorSchemeContrast) private var contrast
+
     let title: String
     let summary: String
     let eventCount: Int
     let deadlineCount: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
                 Image(systemName: "sparkles")
                     .accessibilityHidden(true)
-                Text("YOUR DAY, AT A GLANCE")
-                    .font(.caption2.weight(.semibold))
+                Text("Your day, at a glance")
+                    .font(.subheadline.weight(.semibold))
             }
-            .foregroundStyle(BlackDynamic.text_accent)
+            .foregroundStyle(colorScheme == .dark ? BlackDynamic.text_accent : BlackDynamic.accent_primary)
 
             Text(title)
-                .font(.headline)
-                .foregroundStyle(BlackDynamic.text_primary)
+                .font(.title2.bold())
+                .foregroundStyle(.primary)
             Text(summary)
-                .font(.subheadline)
-                .foregroundStyle(BlackDynamic.text_secondary)
-            HStack(spacing: 24) {
-                Text("\(eventCount) events")
-                    .foregroundStyle(BlackDynamic.text_primary)
-                Text("\(deadlineCount) due today")
-                    .foregroundStyle(BlackDynamic.status_warning)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 20))
+            layout {
+                Label("\(eventCount) events", systemImage: "calendar")
+                    .foregroundStyle(.primary)
+                Label("\(deadlineCount) due today", systemImage: "clock")
+                    .foregroundStyle(colorScheme == .dark ? BlackDynamic.status_warning : BlackDynamic.warning_light)
             }
             .font(.footnote.weight(.medium))
         }
         .fixedSize(horizontal: false, vertical: true)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(BlackDynamic.background_accent)
+        .padding(24)
+        .background {
+            RoundedRectangle(cornerRadius: BlackDynamic.cardRadius)
+                .fill(LinearGradient(
+                    colors: [BlackDynamic.accent_primary.opacity(0.08), .clear],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ))
+        }
+        .background(colorScheme == .dark ? BlackDynamic.background_accent : .white)
         .clipShape(RoundedRectangle(cornerRadius: BlackDynamic.cardRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: BlackDynamic.cardRadius)
+                .strokeBorder(BlackDynamic.accent_primary.opacity(contrast == .increased ? 0.7 : 0.25), lineWidth: 1)
+        }
         .accessibilityElement(children: .combine)
     }
 }
@@ -124,7 +156,7 @@ struct HubCards_Previews: PreviewProvider {
         specimens
             .previewDisplayName("Black Dynamic / Default")
         specimens
-            .environment(\.sizeCategory, .accessibilityExtraExtraExtraLarge)
+            .environment(\.dynamicTypeSize, .accessibility5)
             .previewDisplayName("Black Dynamic / Accessibility text")
     }
 
